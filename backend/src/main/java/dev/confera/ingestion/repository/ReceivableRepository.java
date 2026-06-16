@@ -12,5 +12,7 @@ public interface ReceivableRepository extends JpaRepository<Receivable, UUID> {
 
     List<Receivable> findByTenantIdAndReconciliationStatus(UUID tenantId, ReconciliationStatus status);
 
+    long countByTenantIdAndReconciliationStatus(UUID tenantId, ReconciliationStatus status);
+
     List<Receivable> findByTenantIdAndExpectedSettlementDateBetween(UUID tenantId, LocalDate from, LocalDate to);
 }

@@ -12,4 +12,6 @@ public interface BankStatementRepository extends JpaRepository<BankStatement, UU
     List<BankStatement> findByFileImportId(UUID fileImportId);
 
     List<BankStatement> findByTenantIdAndReconciliationStatus(UUID tenantId, ReconciliationStatus status);
+
+    long countByTenantIdAndReconciliationStatus(UUID tenantId, ReconciliationStatus status);
 }

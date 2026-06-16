@@ -6,6 +6,8 @@ import dev.confera.ingestion.entity.*;
 import dev.confera.ingestion.parser.*;
 import dev.confera.ingestion.repository.BankStatementRepository;
 import dev.confera.ingestion.repository.FileImportRepository;
+import dev.confera.shared.outbox.OutboxEvent;
+import dev.confera.shared.outbox.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -24,6 +26,7 @@ public class FileProcessorService {
 
     private final FileImportRepository fileImportRepository;
     private final BankStatementRepository bankStatementRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final StorageService storageService;
     private final OFXParser ofxParser;
     private final CNAB240Parser cnab240Parser;
@@ -83,6 +86,16 @@ public class FileProcessorService {
         fileImport.setTotalRecords(records.size());
         fileImport.setProcessedRecords(statements.size());
         fileImportRepository.save(fileImport);
+
+        String completedPayload = "{\"importId\":\"%s\",\"tenantId\":\"%s\",\"totalRecords\":%d}"
+            .formatted(event.importId(), event.tenantId(), statements.size());
+        outboxEventRepository.save(OutboxEvent.builder()
+            .aggregateType("FileImport")
+            .aggregateId(event.importId().toString())
+            .eventType("FileImportCompleted")
+            .routingKey(RabbitConfig.FILE_IMPORT_COMPLETED)
+            .payload(completedPayload)
+            .build());
 
         log.info("File import {} completed: {} records processed", event.importId(), statements.size());
     }

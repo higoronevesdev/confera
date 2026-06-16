@@ -13,11 +13,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    public static final String EXCHANGE     = "confera.events";
-    public static final String DLX_EXCHANGE = "confera.events.dlx";
-    public static final String QUEUE        = "confera.file-import";
-    public static final String DLQ          = "confera.file-import.dlq";
-    public static final String ROUTING_KEY  = "file.import.created";
+    public static final String EXCHANGE             = "confera.events";
+    public static final String DLX_EXCHANGE         = "confera.events.dlx";
+    public static final String QUEUE                = "confera.file-import";
+    public static final String DLQ                  = "confera.file-import.dlq";
+    public static final String ROUTING_KEY          = "file.import.created";
+    public static final String RECONCILIATION_QUEUE = "confera.reconciliation";
+    public static final String FILE_IMPORT_COMPLETED = "file.import.completed";
 
     @Bean
     public TopicExchange eventExchange() {
@@ -50,6 +52,16 @@ public class RabbitConfig {
     @Bean
     public Binding dlqBinding(Queue fileImportDlq, TopicExchange dlxExchange) {
         return BindingBuilder.bind(fileImportDlq).to(dlxExchange).with(ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue reconciliationQueue() {
+        return QueueBuilder.durable(RECONCILIATION_QUEUE).build();
+    }
+
+    @Bean
+    public Binding reconciliationBinding(Queue reconciliationQueue, TopicExchange eventExchange) {
+        return BindingBuilder.bind(reconciliationQueue).to(eventExchange).with(FILE_IMPORT_COMPLETED);
     }
 
     @Bean
