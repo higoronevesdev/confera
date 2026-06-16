@@ -8,6 +8,6 @@ import java.util.UUID;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
 
-    @Query("SELECT e FROM OutboxEvent e WHERE e.published = false ORDER BY e.createdAt ASC")
+    @Query("SELECT e FROM OutboxEvent e WHERE e.published = false AND e.attempts < 3 ORDER BY e.createdAt ASC")
     List<OutboxEvent> findUnpublished();
 }

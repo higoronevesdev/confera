@@ -29,12 +29,19 @@ public class OutboxEvent {
     @Column(nullable = false, length = 100)
     private String eventType;
 
+    @Column(length = 255)
+    private String routingKey;
+
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
 
     @Column(nullable = false)
     @Builder.Default
     private boolean published = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int attempts = 0;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

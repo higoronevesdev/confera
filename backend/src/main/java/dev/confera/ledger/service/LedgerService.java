@@ -153,10 +153,15 @@ public class LedgerService {
         String payload = "{\"transactionId\":\"%s\",\"tenantId\":\"%s\",\"occurredAt\":\"%s\",\"entryCount\":%d,\"totalDebitCents\":%d,\"totalCreditCents\":%d}"
             .formatted(tx.getId(), tx.getTenantId(), tx.getOccurredAt(), entries.size(), totalDebit, totalCredit);
 
+        String routingKey = "TransactionPosted".equals(eventType)
+            ? "ledger.transaction.posted"
+            : "ledger.transaction.reversed";
+
         outboxEventRepository.save(OutboxEvent.builder()
             .aggregateType("Transaction")
             .aggregateId(tx.getId().toString())
             .eventType(eventType)
+            .routingKey(routingKey)
             .payload(payload)
             .build());
     }

@@ -61,8 +61,10 @@ CREATE TABLE outbox_events (
     aggregate_type VARCHAR(100) NOT NULL,
     aggregate_id   VARCHAR(255) NOT NULL,
     event_type     VARCHAR(100) NOT NULL,
+    routing_key    VARCHAR(255),
     payload        JSONB        NOT NULL,
     published      BOOLEAN      NOT NULL DEFAULT FALSE,
+    attempts       INT          NOT NULL DEFAULT 0,
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
     published_at   TIMESTAMPTZ
 );
