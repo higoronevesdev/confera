@@ -1,0 +1,17 @@
+package dev.confera.ledger.repository;
+
+import dev.confera.ledger.entity.Account;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface AccountRepository extends JpaRepository<Account, UUID> {
+
+    Optional<Account> findByTenantIdAndCode(UUID tenantId, String code);
+
+    List<Account> findByTenantIdAndActiveTrue(UUID tenantId);
+
+    boolean existsByTenantIdAndCode(UUID tenantId, String code);
+}
