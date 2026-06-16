@@ -1,29 +1,30 @@
-# Backend
-backend/target/
-backend/.mvn/
-*.class
-*.jar
-*.war
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
 
-# IDEs
-.idea/
-*.iml
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
 .vscode/
-*.swp
 
-# OS
+### Mac OS ###
 .DS_Store
-Thumbs.db
-
-# Env
-.env
-.env.local
-*.env
-
-# Docker
-docker-compose.override.yml
