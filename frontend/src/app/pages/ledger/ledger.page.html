@@ -1,0 +1,39 @@
+<div class="page">
+
+  <div class="ledger-card">
+    <div class="ledger-card__header">
+      <h3>Razão Geral</h3>
+      <span class="immutable-tag">Imutável · append-only</span>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Data / Hora</th>
+            <th>Descrição</th>
+            <th>Conta Débito</th>
+            <th>Conta Crédito</th>
+            <th class="num">Valor (R$)</th>
+            <th class="num">Saldo (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of entries; track entry.id) {
+            <tr>
+              <td class="td-id c-mono">{{ entry.id }}</td>
+              <td class="td-date">{{ formatDateTime(entry.timestamp) }}</td>
+              <td class="td-desc">{{ entry.description }}</td>
+              <td class="td-account">{{ entry.debitAccount }}</td>
+              <td class="td-account">{{ entry.creditAccount }}</td>
+              <td class="num c-money">{{ formatCurrency(entry.amount) }}</td>
+              <td class="num c-money balance">{{ formatCurrency(entry.balance) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

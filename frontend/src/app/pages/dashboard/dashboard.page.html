@@ -1,0 +1,67 @@
+<div class="page">
+
+  <div class="metrics-grid">
+    @for (m of metrics; track m.label) {
+      <app-metric-card
+        [label]="m.label"
+        [value]="m.value"
+        [prefix]="m.prefix"
+        [trend]="m.trend"
+        [trendLabel]="m.trendLabel"
+        [decimals]="m.decimals"
+      />
+    }
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__header">
+      <h3 class="chart-card__title">Posição dos últimos 7 dias</h3>
+      <div class="chart-labels">
+        @for (lbl of chartLabels; track lbl) {
+          <span>{{ lbl }}</span>
+        }
+      </div>
+    </div>
+    <svg class="chart" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stop-color="#22D3EE"/>
+          <stop offset="100%" stop-color="#818CF8"/>
+        </linearGradient>
+        <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#22D3EE" stop-opacity="0.22"/>
+          <stop offset="100%" stop-color="#22D3EE" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path [attr.d]="chartFillPath" fill="url(#fg)"/>
+      <path [attr.d]="chartLinePath" fill="none" stroke="url(#lg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="txn-card">
+    <div class="section-header">
+      <h3>Últimas transações</h3>
+    </div>
+    <div class="txn-list">
+      @for (txn of lastTransactions; track txn.id) {
+        <div class="txn-row">
+          <div class="txn-row__info">
+            <span class="txn-row__desc">{{ txn.description }}</span>
+            <span class="txn-row__date">{{ formatDate(txn.date) }}</span>
+          </div>
+          <div class="txn-row__right">
+            <span
+              class="txn-row__amount c-mono"
+              [class.pos]="txn.amount > 0"
+              [class.neg]="txn.amount < 0"
+            >
+              {{ txn.amount > 0 ? '+' : '−' }} R$&nbsp;{{ formatCurrency(txn.amount) }}
+            </span>
+            <app-status-pill [status]="txn.status"/>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

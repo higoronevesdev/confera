@@ -1,0 +1,58 @@
+<input
+  #fileInput
+  type="file"
+  hidden
+  accept=".cnab,.ret,.txt,.ofx,.csv"
+  (change)="onFileInputChange($event)"
+/>
+
+@if (!selectedFile()) {
+  <div
+    class="dropzone"
+    [class.dropzone--over]="isDragOver()"
+    (click)="openPicker()"
+    (dragenter)="onDragEnter($event)"
+    (dragleave)="onDragLeave()"
+    (dragover)="onDragOver($event)"
+    (drop)="onDrop($event)"
+    role="button"
+    tabindex="0"
+    (keydown.enter)="openPicker()"
+  >
+    <div class="dropzone__icon" [class.dropzone__icon--scale]="isDragOver()">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <p class="dropzone__title">Arraste um arquivo ou clique para selecionar</p>
+    <p class="dropzone__hint">CNAB 240 · CNAB 400 · OFX · CSV</p>
+  </div>
+} @else {
+  <div class="file-preview">
+    <div class="file-preview__info">
+      <svg class="file-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div class="file-preview__meta">
+        <span class="file-preview__name">{{ selectedFile()!.name }}</span>
+        <span class="file-preview__size">{{ formatSize(selectedFile()!.size) }}</span>
+      </div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" [style.width]="progress() + '%'"></div>
+    </div>
+    @if (progress() < 100) {
+      <span class="progress-pct">{{ progressInt() }}%</span>
+    } @else {
+      <span class="progress-done">Concluído</span>
+    }
+    <button class="cancel-btn" (click)="cancel()" aria-label="Cancelar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+}
