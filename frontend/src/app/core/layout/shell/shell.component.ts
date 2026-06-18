@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 import { ThemeService } from '../../services/theme.service';
+import { AuthService } from '../../services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast.component';
 
 interface NavItem {
@@ -21,6 +22,7 @@ interface NavItem {
 export class ShellComponent {
   private readonly router = inject(Router);
   readonly themeService   = inject(ThemeService);
+  readonly authService    = inject(AuthService);
 
   readonly collapsed = signal(false);
   readonly isDark    = computed(() => this.themeService.theme() === 'dark');
@@ -52,4 +54,5 @@ export class ShellComponent {
 
   toggleCollapse(): void { this.collapsed.update(v => !v); }
   toggleTheme(): void    { this.themeService.toggle(); }
+  logout(): void         { this.authService.logout(); }
 }

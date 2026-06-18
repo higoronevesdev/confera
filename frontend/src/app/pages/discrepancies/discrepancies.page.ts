@@ -1,21 +1,17 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ToastService } from '../../core/services/toast.service';
+import {
+  ReconciliationService,
+  DiscrepancyResponse,
+  DiscrepancyType,
+  DiscrepancyStatus,
+} from '../../core/services/reconciliation.service';
 
-type DiscType = 'FEE_DIVERGENCE' | 'MISSING_CREDIT' | 'UNEXPECTED_DEBIT' | 'CHARGEBACK';
-
-interface Discrepancy {
-  id: string;
-  type: DiscType;
-  description: string;
-  amount: number;
-  date: Date;
-  ignored?: boolean;
-}
-
-const TYPE_META: Record<DiscType, { label: string; mod: string }> = {
-  FEE_DIVERGENCE:   { label: 'Taxa Divergente',  mod: 'fee'      },
-  MISSING_CREDIT:   { label: 'Crédito Faltante', mod: 'missing'  },
-  UNEXPECTED_DEBIT: { label: 'Débito Indevido',  mod: 'debit'    },
+const TYPE_META: Record<DiscrepancyType, { label: string; mod: string }> = {
+  FEE_DIVERGENCE:   { label: 'Taxa Divergente',  mod: 'fee'       },
+  MISSING_CREDIT:   { label: 'Crédito Faltante', mod: 'missing'   },
+  UNEXPECTED_DEBIT: { label: 'Débito Indevido',  mod: 'debit'     },
+  DATE_DIVERGENCE:  { label: 'Data Divergente',  mod: 'date'      },
   CHARGEBACK:       { label: 'Chargeback',        mod: 'chargeback'},
 };
 
@@ -26,23 +22,37 @@ const TYPE_META: Record<DiscType, { label: string; mod: string }> = {
 })
 export class DiscrepanciesPage {
   private readonly toast = inject(ToastService);
+  private readonly svc   = inject(ReconciliationService);
 
-  readonly items = signal<Discrepancy[]>([
-    { id: 'D-001', type: 'MISSING_CREDIT',   description: 'Crédito não localizado — PagSeguro venda #8821', amount:  890.00, date: new Date('2026-06-15') },
-    { id: 'D-004', type: 'CHARGEBACK',        description: 'Chargeback cliente #3341 — Cielo',               amount:  450.00, date: new Date('2026-06-12') },
-    { id: 'D-002', type: 'UNEXPECTED_DEBIT',  description: 'Taxa MDR não prevista — Rede #9043',             amount:   45.80, date: new Date('2026-06-15') },
-    { id: 'D-003', type: 'FEE_DIVERGENCE',    description: 'Divergência de taxa — Stone venda #7712',        amount:   12.50, date: new Date('2026-06-16') },
-    { id: 'D-005', type: 'FEE_DIVERGENCE',    description: 'MDR divergente — Getnet lote 2406',              amount:   12.00, date: new Date('2026-06-14') },
-  ]);
-
-  readonly pendingId    = signal<string | null>(null);
-  readonly pendingType  = signal<'resolve' | 'ignore' | null>(null);
+  readonly loading     = signal(true);
+  readonly items       = signal<DiscrepancyResponse[]>([]);
+  readonly pendingId   = signal<string | null>(null);
+  readonly pendingType = signal<'resolve' | 'ignore' | null>(null);
 
   readonly sorted = computed(() =>
-    [...this.items()].sort((a, b) => b.amount - a.amount)
+    [...this.items()].sort((a, b) => b.amountCents - a.amountCents)
   );
 
-  typeMeta(t: DiscType) { return TYPE_META[t]; }
+  readonly open = computed(() =>
+    this.sorted().filter(i => i.status === 'OPEN' || i.status === 'INVESTIGATING')
+  );
+
+  constructor() {
+    this.loadDiscrepancies();
+  }
+
+  private loadDiscrepancies(): void {
+    this.loading.set(true);
+    this.svc.listDiscrepancies('OPEN').subscribe({
+      next: page => {
+        this.items.set(page.content);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  typeMeta(t: DiscrepancyType) { return TYPE_META[t]; }
 
   startAction(id: string, type: 'resolve' | 'ignore', e: Event): void {
     e.stopPropagation();
@@ -62,24 +72,39 @@ export class DiscrepanciesPage {
 
     if (type === 'resolve') {
       this.items.update(list => list.filter(i => i.id !== id));
-      this.toast.show(`Divergência resolvida com sucesso.`, 'success', () => {
-        this.items.update(list => [orig, ...list].sort((a, b) => b.amount - a.amount));
+      this.svc.resolveDiscrepancy(id, { status: 'RESOLVED' }).subscribe({
+        next: () => this.toast.show('Divergência resolvida com sucesso.', 'success'),
+        error: () => {
+          this.items.update(list => [orig, ...list]);
+          this.toast.show('Falha ao resolver. Tente novamente.', 'error');
+        },
       });
     } else {
-      this.items.update(list => list.map(i => i.id === id ? { ...i, ignored: true } : i));
-      this.toast.show(`Divergência ignorada.`, 'info', () => {
-        this.items.update(list => list.map(i => i.id === id ? { ...i, ignored: false } : i));
+      this.items.update(list =>
+        list.map(i => i.id === id ? { ...i, status: 'IGNORED' as DiscrepancyStatus } : i)
+      );
+      this.svc.resolveDiscrepancy(id, { status: 'IGNORED' }).subscribe({
+        next: () => this.toast.show('Divergência ignorada.', 'info'),
+        error: () => {
+          this.items.update(list => list.map(i => i.id === id ? orig : i));
+          this.toast.show('Falha ao ignorar. Tente novamente.', 'error');
+        },
       });
     }
 
     this.cancelAction();
   }
 
-  formatCurrency(v: number): string {
-    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  formatCurrency(cents: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(cents) / 100);
   }
 
-  formatDate(d: Date): string {
-    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+  formatDate(d: string): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).format(new Date(d));
   }
 }

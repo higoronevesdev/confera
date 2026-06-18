@@ -1,6 +1,6 @@
 <div class="page">
 
-  <!-- Filters -->
+  <!-- Filters + Run button -->
   <div class="filters">
     <div class="filter-chips">
       @for (f of statusFilters; track f.value) {
@@ -11,17 +11,22 @@
         >{{ f.label }}</button>
       }
     </div>
-    <div class="search-wrap">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input
-        class="search-input"
-        type="text"
-        placeholder="Buscar por descrição ou adquirente…"
-        [value]="search()"
-        (input)="search.set($any($event.target).value)"
-      />
+    <div class="filters__right">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          class="search-input"
+          type="text"
+          placeholder="Buscar por descrição…"
+          [value]="search()"
+          (input)="search.set($any($event.target).value)"
+        />
+      </div>
+      <button class="run-btn" [disabled]="running()" (click)="runReconciliation()">
+        @if (running()) { Processando… } @else { Conciliar agora }
+      </button>
     </div>
   </div>
 
@@ -33,86 +38,85 @@
     <span class="progress-label">{{ matchRate() }}% conciliado</span>
   </div>
 
-  <!-- UNMATCHED group -->
-  @if (grouped().unmatched.length > 0) {
-    <div class="group">
-      <div class="group-header">
-        <span class="group-title unmatched">Não conciliado</span>
-        <span class="group-count">{{ grouped().unmatched.length }}</span>
-      </div>
-      @for (item of grouped().unmatched; track item.id) {
-        <div class="rec-item" (click)="selectItem(item)">
-          <div class="rec-item__main">
-            <span class="rec-item__desc">{{ item.description }}</span>
-            <span class="rec-item__meta">{{ item.acquirer }} · {{ formatDate(item.date) }}</span>
-          </div>
-          <div class="rec-item__amounts">
-            <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.expectedAmount) }}</span>
-            @if (item.actualAmount !== undefined) {
-              <span class="rec-item__act c-money">R$ {{ formatCurrency(item.actualAmount) }}</span>
-            } @else {
-              <span class="rec-item__missing">—</span>
-            }
-          </div>
-          <app-status-pill status="UNMATCHED"/>
-        </div>
-      }
-    </div>
-  }
+  @if (loading()) {
+    <div class="empty-state">Carregando…</div>
+  } @else if (items().length === 0) {
+    <div class="empty-state">Nenhuma divergência encontrada. Clique em "Conciliar agora" para iniciar.</div>
+  } @else {
 
-  <!-- FUZZY group -->
-  @if (grouped().fuzzy.length > 0) {
-    <div class="group">
-      <div class="group-header">
-        <span class="group-title fuzzy">Parcial</span>
-        <span class="group-count">{{ grouped().fuzzy.length }}</span>
-      </div>
-      @for (item of grouped().fuzzy; track item.id) {
-        <div class="rec-item" (click)="selectItem(item)">
-          <div class="rec-item__main">
-            <span class="rec-item__desc">{{ item.description }}</span>
-            <span class="rec-item__meta">{{ item.acquirer }} · {{ formatDate(item.date) }}</span>
-          </div>
-          <div class="rec-item__amounts">
-            <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.expectedAmount) }}</span>
-            @if (item.actualAmount !== undefined) {
-              <span class="rec-item__act c-money">R$ {{ formatCurrency(item.actualAmount) }}</span>
-            }
-          </div>
-          <span class="confidence-badge">{{ item.confidence }}%</span>
-          <app-status-pill status="FUZZY"/>
-          <div class="rec-item__actions">
-            <button class="btn-accept" (click)="acceptItem(item, $event)">Aceitar</button>
-            <button class="btn-reject" (click)="rejectItem(item, $event)">Rejeitar</button>
-          </div>
+    <!-- UNMATCHED group -->
+    @if (grouped().unmatched.length > 0) {
+      <div class="group">
+        <div class="group-header">
+          <span class="group-title unmatched">Não conciliado</span>
+          <span class="group-count">{{ grouped().unmatched.length }}</span>
         </div>
-      }
-    </div>
-  }
-
-  <!-- MATCHED group (collapsed) -->
-  @if (grouped().matched.length > 0) {
-    <div class="group">
-      <button class="group-header group-header--toggle" (click)="matchedExpanded.update(v => !v)">
-        <span class="group-title matched">Conciliado</span>
-        <span class="group-count">{{ grouped().matched.length }}</span>
-        <span class="toggle-icon">{{ matchedExpanded() ? '▲' : '▼' }}</span>
-      </button>
-      @if (matchedExpanded()) {
-        @for (item of grouped().matched; track item.id) {
-          <div class="rec-item rec-item--matched" (click)="selectItem(item)">
+        @for (item of grouped().unmatched; track item.id) {
+          <div class="rec-item" (click)="selectItem(item)">
             <div class="rec-item__main">
               <span class="rec-item__desc">{{ item.description }}</span>
-              <span class="rec-item__meta">{{ item.acquirer }} · {{ formatDate(item.date) }}</span>
+              <span class="rec-item__meta">{{ typeLabel(item.type) }} · {{ formatDate(item.date) }}</span>
             </div>
             <div class="rec-item__amounts">
-              <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.expectedAmount) }}</span>
+              <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.amountCents) }}</span>
             </div>
-            <app-status-pill status="MATCHED"/>
+            <app-status-pill status="UNMATCHED"/>
           </div>
         }
-      }
-    </div>
+      </div>
+    }
+
+    <!-- FUZZY group -->
+    @if (grouped().fuzzy.length > 0) {
+      <div class="group">
+        <div class="group-header">
+          <span class="group-title fuzzy">Em investigação</span>
+          <span class="group-count">{{ grouped().fuzzy.length }}</span>
+        </div>
+        @for (item of grouped().fuzzy; track item.id) {
+          <div class="rec-item" (click)="selectItem(item)">
+            <div class="rec-item__main">
+              <span class="rec-item__desc">{{ item.description }}</span>
+              <span class="rec-item__meta">{{ typeLabel(item.type) }} · {{ formatDate(item.date) }}</span>
+            </div>
+            <div class="rec-item__amounts">
+              <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.amountCents) }}</span>
+            </div>
+            <app-status-pill status="FUZZY"/>
+            <div class="rec-item__actions">
+              <button class="btn-accept" (click)="acceptItem(item, $event)">Resolver</button>
+              <button class="btn-reject" (click)="rejectItem(item, $event)">Ignorar</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- MATCHED group (collapsed) -->
+    @if (grouped().matched.length > 0) {
+      <div class="group">
+        <button class="group-header group-header--toggle" (click)="matchedExpanded.update(v => !v)">
+          <span class="group-title matched">Conciliado</span>
+          <span class="group-count">{{ grouped().matched.length }}</span>
+          <span class="toggle-icon">{{ matchedExpanded() ? '▲' : '▼' }}</span>
+        </button>
+        @if (matchedExpanded()) {
+          @for (item of grouped().matched; track item.id) {
+            <div class="rec-item rec-item--matched" (click)="selectItem(item)">
+              <div class="rec-item__main">
+                <span class="rec-item__desc">{{ item.description }}</span>
+                <span class="rec-item__meta">{{ typeLabel(item.type) }} · {{ formatDate(item.date) }}</span>
+              </div>
+              <div class="rec-item__amounts">
+                <span class="rec-item__exp c-money">R$ {{ formatCurrency(item.amountCents) }}</span>
+              </div>
+              <app-status-pill status="MATCHED"/>
+            </div>
+          }
+        }
+      </div>
+    }
+
   }
 
 </div>
@@ -122,11 +126,11 @@
   <div class="backdrop" (click)="closeDrawer()"></div>
 }
 
-<!-- Drawer (always in DOM for smooth transition) -->
+<!-- Drawer -->
 <aside class="drawer" [class.is-open]="selectedItem()">
   @if (selectedItem()) {
     <div class="drawer__header">
-      <h3>Detalhe da Conciliação</h3>
+      <h3>Detalhe da Divergência</h3>
       <button class="drawer__close" (click)="closeDrawer()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -138,15 +142,9 @@
         <span class="detail-label">Status</span>
         <app-status-pill [status]="selectedItem()!.status"/>
       </div>
-      @if (selectedItem()!.confidence !== undefined) {
-        <div class="detail-row">
-          <span class="detail-label">Confiança</span>
-          <span class="detail-value">{{ selectedItem()!.confidence }}%</span>
-        </div>
-      }
       <div class="detail-row">
-        <span class="detail-label">Adquirente</span>
-        <span class="detail-value">{{ selectedItem()!.acquirer }}</span>
+        <span class="detail-label">Tipo</span>
+        <span class="detail-value">{{ typeLabel(selectedItem()!.type) }}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Data</span>
@@ -154,30 +152,9 @@
       </div>
       <hr class="divider"/>
       <div class="detail-row">
-        <span class="detail-label">Valor esperado</span>
-        <span class="detail-value c-money">R$ {{ formatCurrency(selectedItem()!.expectedAmount) }}</span>
+        <span class="detail-label">Valor divergente</span>
+        <span class="detail-value c-money">R$ {{ formatCurrency(selectedItem()!.amountCents) }}</span>
       </div>
-      @if (selectedItem()!.actualAmount !== undefined) {
-        <div class="detail-row">
-          <span class="detail-label">Valor realizado</span>
-          <span class="detail-value c-money">R$ {{ formatCurrency(selectedItem()!.actualAmount!) }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Delta</span>
-          <span
-            class="detail-value c-money"
-            [class.delta-pos]="(selectedItem()!.delta ?? 0) >= 0"
-            [class.delta-neg]="(selectedItem()!.delta ?? 0) < 0"
-          >
-            {{ (selectedItem()!.delta ?? 0) >= 0 ? '+' : '' }}R$ {{ formatCurrency(selectedItem()!.delta ?? 0) }}
-          </span>
-        </div>
-      } @else {
-        <div class="detail-row">
-          <span class="detail-label">Valor realizado</span>
-          <span class="detail-value delta-neg">Não encontrado</span>
-        </div>
-      }
       <div class="detail-row">
         <span class="detail-label">Descrição</span>
         <span class="detail-value">{{ selectedItem()!.description }}</span>

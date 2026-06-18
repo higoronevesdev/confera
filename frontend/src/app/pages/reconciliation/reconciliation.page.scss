@@ -15,11 +15,45 @@
 .filters {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .filter-chips { display: flex; gap: var(--space-2); }
+
+.filters__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.run-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--brand-primary);
+  color: var(--on-accent);
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-standard),
+              opacity var(--motion-fast) var(--ease-standard);
+
+  &:hover:not(:disabled) { background: var(--brand-primary-hover); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.empty-state {
+  padding: var(--space-10);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-body);
+}
 
 .chip {
   padding: 6px 14px;

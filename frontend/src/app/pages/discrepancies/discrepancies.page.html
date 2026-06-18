@@ -2,51 +2,57 @@
 
   <div class="disc-card">
     <div class="disc-card__header">
-      <h3>Divergências</h3>
-      <span class="count">{{ sorted().length }} iten{{ sorted().length !== 1 ? 's' : '' }}</span>
-    </div>
-
-    <div class="disc-list">
-      @for (item of sorted(); track item.id) {
-        <div class="disc-row" [class.disc-row--ignored]="item.ignored">
-          <div class="disc-row__info">
-            <span class="disc-type badge--{{ typeMeta(item.type).mod }}">
-              {{ typeMeta(item.type).label }}
-            </span>
-            <span class="disc-desc">{{ item.description }}</span>
-            <span class="disc-date">{{ formatDate(item.date) }}</span>
-          </div>
-
-          <div class="disc-row__right">
-            <span class="disc-amount c-money">R$ {{ formatCurrency(item.amount) }}</span>
-
-            @if (item.ignored) {
-              <span class="ignored-label">Ignorada</span>
-            } @else if (pendingId() === item.id) {
-              <div class="confirm-inline">
-                <span>Confirmar {{ pendingType() === 'resolve' ? 'resolução' : 'ignorar' }}?</span>
-                <button class="btn-confirm" (click)="confirmAction()">Sim</button>
-                <button class="btn-cancel-inline" (click)="cancelAction()">Cancelar</button>
-              </div>
-            } @else {
-              <div class="disc-actions">
-                <button class="btn-resolve" (click)="startAction(item.id, 'resolve', $event)">Resolver</button>
-                <button class="btn-ignore"  (click)="startAction(item.id, 'ignore',  $event)">Ignorar</button>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      @empty {
-        <div class="empty-state">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--success)">
-            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          <p>Sem divergências em aberto.</p>
-        </div>
+      <h3>Divergências em aberto</h3>
+      @if (!loading()) {
+        <span class="count">{{ open().length }} iten{{ open().length !== 1 ? 's' : '' }}</span>
       }
     </div>
+
+    @if (loading()) {
+      <div class="empty-state"><p>Carregando…</p></div>
+    } @else {
+      <div class="disc-list">
+        @for (item of open(); track item.id) {
+          <div class="disc-row" [class.disc-row--ignored]="item.status === 'IGNORED'">
+            <div class="disc-row__info">
+              <span class="disc-type badge--{{ typeMeta(item.type).mod }}">
+                {{ typeMeta(item.type).label }}
+              </span>
+              <span class="disc-desc">{{ item.description }}</span>
+              <span class="disc-date">{{ formatDate(item.createdAt) }}</span>
+            </div>
+
+            <div class="disc-row__right">
+              <span class="disc-amount c-money">R$ {{ formatCurrency(item.amountCents) }}</span>
+
+              @if (item.status === 'IGNORED') {
+                <span class="ignored-label">Ignorada</span>
+              } @else if (pendingId() === item.id) {
+                <div class="confirm-inline">
+                  <span>Confirmar {{ pendingType() === 'resolve' ? 'resolução' : 'ignorar' }}?</span>
+                  <button class="btn-confirm" (click)="confirmAction()">Sim</button>
+                  <button class="btn-cancel-inline" (click)="cancelAction()">Cancelar</button>
+                </div>
+              } @else {
+                <div class="disc-actions">
+                  <button class="btn-resolve" (click)="startAction(item.id, 'resolve', $event)">Resolver</button>
+                  <button class="btn-ignore"  (click)="startAction(item.id, 'ignore',  $event)">Ignorar</button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (open().length === 0) {
+          <div class="empty-state">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--success)">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <p>Sem divergências em aberto.</p>
+          </div>
+        }
+      </div>
+    }
   </div>
 
 </div>

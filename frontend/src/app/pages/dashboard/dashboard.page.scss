@@ -110,3 +110,9 @@
   &.pos { color: var(--money-positive); }
   &.neg { color: var(--money-negative); }
 }
+
+.txn-empty {
+  padding: var(--space-8) var(--space-6);
+  color: var(--text-tertiary);
+  font-size: var(--fs-body);
+}

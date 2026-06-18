@@ -207,6 +207,34 @@
   user-select: none;
 }
 
+.user-email {
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border: 1px solid var(--border);
+  background: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--fs-body-sm);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-standard),
+              color var(--motion-fast) var(--ease-standard);
+
+  &:hover { background: var(--danger-tint); color: var(--danger); border-color: var(--danger-border); }
+}
+
 /* ── Main ── */
 .main {
   grid-column: 2;

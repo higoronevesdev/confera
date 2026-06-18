@@ -1,7 +1,7 @@
 <div class="page">
 
   <div class="metrics-grid">
-    @for (m of metrics; track m.label) {
+    @for (m of metrics(); track m.label) {
       <app-metric-card
         [label]="m.label"
         [value]="m.value"
@@ -40,28 +40,31 @@
 
   <div class="txn-card">
     <div class="section-header">
-      <h3>Últimas transações</h3>
+      <h3>Atividade recente</h3>
     </div>
-    <div class="txn-list">
-      @for (txn of lastTransactions; track txn.id) {
-        <div class="txn-row">
-          <div class="txn-row__info">
-            <span class="txn-row__desc">{{ txn.description }}</span>
-            <span class="txn-row__date">{{ formatDate(txn.date) }}</span>
+
+    @if (loading()) {
+      <div class="txn-empty">Carregando…</div>
+    } @else if (recentActivity().length === 0) {
+      <div class="txn-empty">Nenhuma atividade ainda — importe um arquivo para começar.</div>
+    } @else {
+      <div class="txn-list">
+        @for (item of recentActivity(); track item.id) {
+          <div class="txn-row">
+            <div class="txn-row__info">
+              <span class="txn-row__desc">{{ item.description }}</span>
+              <span class="txn-row__date">{{ formatDate(item.date) }}</span>
+            </div>
+            <div class="txn-row__right">
+              <span class="txn-row__amount c-mono">
+                R$&nbsp;{{ formatCurrency(item.amountCents) }}
+              </span>
+              <app-status-pill [status]="item.status"/>
+            </div>
           </div>
-          <div class="txn-row__right">
-            <span
-              class="txn-row__amount c-mono"
-              [class.pos]="txn.amount > 0"
-              [class.neg]="txn.amount < 0"
-            >
-              {{ txn.amount > 0 ? '+' : '−' }} R$&nbsp;{{ formatCurrency(txn.amount) }}
-            </span>
-            <app-status-pill [status]="txn.status"/>
-          </div>
-        </div>
-      }
-    </div>
+        }
+      </div>
+    }
   </div>
 
 </div>

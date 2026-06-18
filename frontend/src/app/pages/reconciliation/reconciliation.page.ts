@@ -1,19 +1,45 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { StatusPillComponent } from '../../shared/components/status-pill/status-pill.component';
 import { ToastService } from '../../core/services/toast.service';
+import {
+  ReconciliationService,
+  DiscrepancyResponse,
+  DiscrepancyType,
+} from '../../core/services/reconciliation.service';
 
 type RecStatus = 'MATCHED' | 'FUZZY' | 'UNMATCHED';
 
 interface RecItem {
   id: string;
   description: string;
-  expectedAmount: number;
-  actualAmount?: number;
-  delta?: number;
-  acquirer: string;
-  date: Date;
+  amountCents: number;
+  type: DiscrepancyType;
+  date: string;
   status: RecStatus;
-  confidence?: number;
+  apiStatus: string;
+}
+
+const TYPE_LABEL: Record<DiscrepancyType, string> = {
+  FEE_DIVERGENCE:   'Taxa Divergente',
+  MISSING_CREDIT:   'Crédito Faltante',
+  UNEXPECTED_DEBIT: 'Débito Indevido',
+  DATE_DIVERGENCE:  'Data Divergente',
+  CHARGEBACK:       'Chargeback',
+};
+
+function toRecItem(d: DiscrepancyResponse): RecItem {
+  const status: RecStatus =
+    d.status === 'RESOLVED' ? 'MATCHED' :
+    d.status === 'INVESTIGATING' ? 'FUZZY' : 'UNMATCHED';
+  return {
+    id:          d.id,
+    description: d.description || TYPE_LABEL[d.type],
+    amountCents: d.amountCents,
+    type:        d.type,
+    date:        d.createdAt,
+    status,
+    apiStatus:   d.status,
+  };
 }
 
 @Component({
@@ -23,33 +49,29 @@ interface RecItem {
   imports: [StatusPillComponent]
 })
 export class ReconciliationPage {
-  private readonly toast = inject(ToastService);
+  private readonly toast   = inject(ToastService);
+  private readonly svc     = inject(ReconciliationService);
 
   readonly statusFilters = [
-    { value: 'ALL',       label: 'Todos'          },
-    { value: 'UNMATCHED', label: 'Não conciliado' },
-    { value: 'FUZZY',     label: 'Parcial'        },
-    { value: 'MATCHED',   label: 'Conciliado'     },
+    { value: 'ALL',          label: 'Todos'          },
+    { value: 'UNMATCHED',    label: 'Não conciliado' },
+    { value: 'FUZZY',        label: 'Parcial'        },
+    { value: 'MATCHED',      label: 'Conciliado'     },
   ];
 
-  readonly activeFilter   = signal<string>('ALL');
-  readonly search         = signal<string>('');
+  readonly activeFilter    = signal<string>('ALL');
+  readonly search          = signal<string>('');
   readonly matchedExpanded = signal<boolean>(false);
-  readonly selectedItem   = signal<RecItem | null>(null);
+  readonly selectedItem    = signal<RecItem | null>(null);
+  readonly loading         = signal<boolean>(true);
+  readonly running         = signal<boolean>(false);
 
-  readonly items = signal<RecItem[]>([
-    { id: 'R-001', description: 'Cielo — Venda #4532',          expectedAmount: 1500.00, actualAmount: 1500.00, delta: 0,      acquirer: 'Cielo',     date: new Date('2026-06-17'), status: 'MATCHED',   confidence: 100 },
-    { id: 'R-002', description: 'Stone — MDR divergente #7712',  expectedAmount: 2300.00, actualAmount: 2287.50, delta: -12.50, acquirer: 'Stone',     date: new Date('2026-06-16'), status: 'FUZZY',     confidence: 87  },
-    { id: 'R-003', description: 'PagSeguro — Crédito faltante',  expectedAmount:  890.00, actualAmount: undefined,              acquirer: 'PagSeguro', date: new Date('2026-06-15'), status: 'UNMATCHED'                   },
-    { id: 'R-004', description: 'Rede — Taxa indevida #9043',    expectedAmount:    0.00, actualAmount: 45.80,   delta: 45.80,  acquirer: 'Rede',      date: new Date('2026-06-15'), status: 'UNMATCHED'                   },
-    { id: 'R-005', description: 'Getnet — Parcelamento lote 24', expectedAmount: 3600.00, actualAmount: 3612.00, delta: 12.00,  acquirer: 'Getnet',    date: new Date('2026-06-14'), status: 'FUZZY',     confidence: 72  },
-    { id: 'R-006', description: 'Cielo — Débito #7891',          expectedAmount:  750.00, actualAmount: 750.00,  delta: 0,      acquirer: 'Cielo',     date: new Date('2026-06-14'), status: 'MATCHED',   confidence: 100 },
-    { id: 'R-007', description: 'Stone — Antecipação',           expectedAmount: 5000.00, actualAmount: 5000.00, delta: 0,      acquirer: 'Stone',     date: new Date('2026-06-13'), status: 'MATCHED',   confidence: 100 },
-  ]);
+  readonly items = signal<RecItem[]>([]);
 
   readonly matchRate = computed(() => {
     const all = this.items();
-    return all.length ? Math.round((all.filter(i => i.status === 'MATCHED').length / all.length) * 100) : 0;
+    if (!all.length) return 0;
+    return Math.round((all.filter(i => i.status === 'MATCHED').length / all.length) * 100);
   });
 
   readonly filtered = computed(() => {
@@ -57,7 +79,7 @@ export class ReconciliationPage {
     const q = this.search().toLowerCase().trim();
     return this.items().filter(i =>
       (f === 'ALL' || i.status === f) &&
-      (!q || i.description.toLowerCase().includes(q) || i.acquirer.toLowerCase().includes(q))
+      (!q || i.description.toLowerCase().includes(q) || TYPE_LABEL[i.type].toLowerCase().includes(q))
     );
   });
 
@@ -67,17 +89,50 @@ export class ReconciliationPage {
     matched:   this.filtered().filter(i => i.status === 'MATCHED'),
   }));
 
+  constructor() {
+    this.loadDiscrepancies();
+  }
+
+  private loadDiscrepancies(): void {
+    this.loading.set(true);
+    this.svc.listDiscrepancies().subscribe({
+      next: page => {
+        this.items.set(page.content.map(toRecItem));
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  runReconciliation(): void {
+    this.running.set(true);
+    this.svc.runReconciliation().subscribe({
+      next: summary => {
+        this.running.set(false);
+        this.toast.show(
+          `Conciliação concluída: ${summary.exactMatches} exatos, ${summary.fuzzyMatches} parciais, ${summary.unmatched} sem par.`,
+          'success'
+        );
+        this.loadDiscrepancies();
+      },
+      error: () => this.running.set(false),
+    });
+  }
+
   selectItem(item: RecItem): void { this.selectedItem.set(item); }
-  closeDrawer(): void { this.selectedItem.set(null); }
+  closeDrawer(): void             { this.selectedItem.set(null); }
 
   acceptItem(item: RecItem, e: Event): void {
     e.stopPropagation();
     const prev = { ...item };
     this.items.update(list =>
-      list.map(i => i.id === item.id ? { ...i, status: 'MATCHED' as RecStatus, confidence: 100 } : i)
+      list.map(i => i.id === item.id ? { ...i, status: 'MATCHED' as RecStatus, apiStatus: 'RESOLVED' } : i)
     );
-    this.toast.show(`"${item.description}" aceito como conciliado.`, 'success', () => {
-      this.items.update(list => list.map(i => i.id === prev.id ? prev : i));
+    this.svc.resolveDiscrepancy(item.id, { status: 'RESOLVED' }).subscribe({
+      next: () => this.toast.show(`"${item.description}" aceito como conciliado.`, 'success'),
+      error: () => {
+        this.items.update(list => list.map(i => i.id === prev.id ? prev : i));
+      },
     });
   }
 
@@ -85,18 +140,28 @@ export class ReconciliationPage {
     e.stopPropagation();
     const prev = { ...item };
     this.items.update(list =>
-      list.map(i => i.id === item.id ? { ...i, status: 'UNMATCHED' as RecStatus, confidence: undefined } : i)
+      list.map(i => i.id === item.id ? { ...i, status: 'UNMATCHED' as RecStatus, apiStatus: 'IGNORED' } : i)
     );
-    this.toast.show(`"${item.description}" marcado como divergente.`, 'warning', () => {
-      this.items.update(list => list.map(i => i.id === prev.id ? prev : i));
+    this.svc.resolveDiscrepancy(item.id, { status: 'IGNORED' }).subscribe({
+      next: () => this.toast.show(`"${item.description}" marcado como ignorado.`, 'warning'),
+      error: () => {
+        this.items.update(list => list.map(i => i.id === prev.id ? prev : i));
+      },
     });
   }
 
-  formatCurrency(v: number): string {
-    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  typeLabel(t: DiscrepancyType): string { return TYPE_LABEL[t]; }
+
+  formatCurrency(cents: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(cents) / 100);
   }
 
-  formatDate(d: Date): string {
-    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+  formatDate(d: string): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }).format(new Date(d));
   }
 }

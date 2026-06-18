@@ -1,39 +1,113 @@
 <div class="page">
 
+  <!-- Accounts -->
   <div class="ledger-card">
     <div class="ledger-card__header">
-      <h3>Razão Geral</h3>
+      <h3>Plano de Contas</h3>
       <span class="immutable-tag">Imutável · append-only</span>
     </div>
 
-    <div class="table-wrapper">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Data / Hora</th>
-            <th>Descrição</th>
-            <th>Conta Débito</th>
-            <th>Conta Crédito</th>
-            <th class="num">Valor (R$)</th>
-            <th class="num">Saldo (R$)</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (entry of entries; track entry.id) {
+    @if (loadingAccounts()) {
+      <div class="empty-state">Carregando contas…</div>
+    } @else if (accounts().length === 0) {
+      <div class="empty-state">Nenhuma conta cadastrada.</div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
             <tr>
-              <td class="td-id c-mono">{{ entry.id }}</td>
-              <td class="td-date">{{ formatDateTime(entry.timestamp) }}</td>
-              <td class="td-desc">{{ entry.description }}</td>
-              <td class="td-account">{{ entry.debitAccount }}</td>
-              <td class="td-account">{{ entry.creditAccount }}</td>
-              <td class="num c-money">{{ formatCurrency(entry.amount) }}</td>
-              <td class="num c-money balance">{{ formatCurrency(entry.balance) }}</td>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Saldo Normal</th>
+              <th class="num">Saldo (R$)</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            @for (acc of accounts(); track acc.id) {
+              <tr
+                class="account-row"
+                [class.account-row--selected]="acc.code === selectedCode()"
+                (click)="onAccountChange(acc.code)"
+              >
+                <td class="td-id c-mono">{{ acc.code }}</td>
+                <td class="td-desc">{{ acc.name }}</td>
+                <td class="td-account">{{ accountTypeLabel(acc.type) }}</td>
+                <td class="td-account">{{ acc.normalBalance }}</td>
+                <td class="num c-money balance">{{ formatCurrency(acc.balanceCents) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </div>
+
+  <!-- Statement -->
+  @if (selectedAccount()) {
+    <div class="ledger-card">
+      <div class="ledger-card__header">
+        <div class="statement-title">
+          <h3>Extrato — {{ selectedAccount()!.name }}</h3>
+          <span class="td-account c-mono">{{ selectedAccount()!.code }}</span>
+        </div>
+        <div class="date-range">
+          <input
+            class="date-input"
+            type="date"
+            [ngModel]="dateFrom()"
+            (ngModelChange)="dateFrom.set($event)"
+          />
+          <span class="date-sep">até</span>
+          <input
+            class="date-input"
+            type="date"
+            [ngModel]="dateTo()"
+            (ngModelChange)="dateTo.set($event)"
+          />
+          <button class="btn-filter" (click)="loadStatement()">Filtrar</button>
+        </div>
+      </div>
+
+      @if (loadingStatement()) {
+        <div class="empty-state">Carregando extrato…</div>
+      } @else if (entries().length === 0) {
+        <div class="empty-state">Nenhum lançamento no período.</div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Conta</th>
+                <th>Tipo</th>
+                <th class="num">Valor (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of entries(); track entry.id) {
+                <tr>
+                  <td class="td-id c-mono">{{ entry.id.slice(0, 8) }}…</td>
+                  <td class="td-account">{{ entry.accountName }}</td>
+                  <td>
+                    <span class="dir-badge dir-badge--{{ entry.direction.toLowerCase() }}">
+                      {{ entry.direction === 'DEBIT' ? 'Débito' : 'Crédito' }}
+                    </span>
+                  </td>
+                  <td
+                    class="num c-money"
+                    [class.credit]="entry.direction === 'CREDIT'"
+                    [class.debit]="entry.direction === 'DEBIT'"
+                  >
+                    {{ formatCurrency(entry.amountCents) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
 
 </div>
